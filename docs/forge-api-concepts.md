@@ -339,6 +339,15 @@ ends, the viewer's committed full-state inventory conceals the hand identity
 while preserving its slot and retires inaccessible linked faces from Diff updates. Temporary public hand reveals retain
 their existing precedence.
 
+Live card type text is captured from Forge's effective `CardType.toString()`
+in `CardSnapshot.currentTypeLine`. Visible active card objects publish it as
+the optional `GameObjectInfo.currentTypeLine` string (local extension tag 50001,
+outside upstream's low-tag field range). This preserves types absent from GRE
+enums without inventing enum values. Absent means unavailable/legacy; present
+empty means authoritative typeless. Linked inactive faces retain printed data.
+Face-down creature facades and concealed identities omit the field. Viewer Diff
+objects replace whole prior objects, so concealment retires any previous text.
+
 Do not infer a cause from snapshots when a Forge event can carry it. Do not store a parallel mutable truth when a snapshot can read the current Forge state.
 
 When an upstream Forge event lacks the payload needed for protocol translation, prefer a small fork-local event enrichment over correlating unrelated events after the fact. The event should carry the Forge object IDs needed by the bridge, not protocol instance IDs.

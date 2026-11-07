@@ -141,3 +141,8 @@ s/\tSneak = 55;/\tPlaceholder55 = 55;/
 
 # --- TurnStep collision ---
 s/\tStop = 7;/\tStop_2117 = 7;/
+
+# Local embedding extension: high tag avoids upstream low-tag field collisions.
+# Presence distinguishes unavailable/legacy data from an authoritative empty type line.
+/^message GameObjectInfo {/a\
+\toptional string currentTypeLine = 50001;

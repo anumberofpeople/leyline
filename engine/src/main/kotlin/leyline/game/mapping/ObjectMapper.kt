@@ -428,6 +428,8 @@ object ObjectMapper {
     ): GameObjectInfo.Builder {
         // Live card types — overlay when they differ from DB (same logic as overlayCardTypes)
         overlayCardTypesFromSnapshot(cardSnap)
+        clearCurrentTypeLine()
+        cardSnap.currentTypeLine?.let { setCurrentTypeLine(it) }
 
         // Live P/T — set for all creatures regardless of zone
         val isCreature = cardSnap.liveCardTypeNumbers.contains(CardType.Creature.number)

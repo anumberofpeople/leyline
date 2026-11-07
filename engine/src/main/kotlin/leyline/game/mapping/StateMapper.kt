@@ -1356,6 +1356,7 @@ object StateMapper {
                                     }
                                 facade
                                     .setVisibility(Visibility.Public)
+                                    .clearCurrentTypeLine()
                                     .setGrpId(3)
                                     .setOverlayGrpId(3)
                                     .setIsFacedown(true)

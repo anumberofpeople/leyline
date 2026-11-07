@@ -658,6 +658,7 @@ object SnapshotCapture {
             attachedToInstanceId = attachedToInstanceId,
             preparedCopySourceInstanceId = preparedCopySourceInstanceId,
             liveCardTypeNumbers = liveTypeNumbers,
+            currentTypeLine = card.type.toString(),
             isDoubleFaced = card.isDoubleFaced,
             othersideGrpId = othersideGrpId,
             currentStateNameIsBackside = currentStateNameIsBackside,

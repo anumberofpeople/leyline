@@ -26,6 +26,108 @@ import wotc.mtgo.gre.external.messaging.Messages.Visibility
 class ObjectMapperSnapshotTest :
     BoardTest({
 
+        test("effective type text preserves Borg and type removal without enum inference") {
+            val (b, game, _) = startWithBoard { _, human, _ -> addCard("Grizzly Bears", human, ZoneType.Battlefield) }
+            val card = game.humanPlayer.battlefield.card("Grizzly Bears")
+            val fid = ForgeCardId(card.id)
+            val iid = b.getOrAllocInstanceId(fid).value
+
+            fun project() =
+                ObjectMapper.buildFromSnapshot(
+                    SnapshotCapture.run(game, b, "types", 1).objects.getValue(fid),
+                    iid,
+                    ZoneIds.BATTLEFIELD,
+                    1,
+                    b.cardProto,
+                )
+            val printed = project()
+            card.addChangedCardTypes(
+                forge.card.CardType.parse("Artifact Creature - Borg", true),
+                null,
+                false,
+                emptySet(),
+                101L,
+                1L,
+                false,
+                false,
+            )
+            val changed = project()
+            changed.hasCurrentTypeLine() shouldBe true
+            changed.currentTypeLine shouldBe card.type.toString()
+            changed.currentTypeLine.contains("Borg") shouldBe true
+            changed.currentTypeLine shouldNotBe printed.currentTypeLine
+            card.removeChangedCardTypes(101L, 1L, false)
+            project().currentTypeLine shouldBe printed.currentTypeLine
+        }
+
+        test("type text presence distinguishes typeless cards from unavailable snapshots") {
+            val (b, game, _) = startWithBoard { _, human, _ -> addCard("Grizzly Bears", human, ZoneType.Battlefield) }
+            val card = game.humanPlayer.battlefield.card("Grizzly Bears")
+            val fid = ForgeCardId(card.id)
+            val iid = b.getOrAllocInstanceId(fid).value
+            val snapshot = SnapshotCapture.run(game, b, "types", 1).objects.getValue(fid)
+
+            fun project(typeLine: String?) =
+                ObjectMapper.buildFromSnapshot(
+                    snapshot.copy(currentTypeLine = typeLine, liveCardTypeNumbers = emptyList()),
+                    iid,
+                    ZoneIds.BATTLEFIELD,
+                    1,
+                    b.cardProto,
+                )
+            val typeless = project("")
+            typeless.hasCurrentTypeLine() shouldBe true
+            typeless.currentTypeLine shouldBe ""
+            wotc.mtgo.gre.external.messaging.Messages.GameObjectInfo
+                .parseFrom(typeless.toByteArray())
+                .hasCurrentTypeLine() shouldBe true
+            project(null).hasCurrentTypeLine() shouldBe false
+            typeless.cardTypesList shouldBe emptyList()
+            card.setType(forge.card.CardType(false))
+            card.updateTypeCache()
+            SnapshotCapture
+                .run(game, b, "types", 2)
+                .objects
+                .getValue(fid)
+                .currentTypeLine shouldBe ""
+        }
+
+        test("effective type text follows the active transforming face and returns to front") {
+            TestCardRegistry.ensureCardRegistered("Revealing Eye")
+            val (b, game, _) = startWithBoard { _, human, _ -> addCard("Concealing Curtains", human, ZoneType.Battlefield) }
+            val card = game.humanPlayer.battlefield.card("Concealing Curtains")
+            val fid = ForgeCardId(card.id)
+            val iid = b.getOrAllocInstanceId(fid).value
+
+            fun project() =
+                ObjectMapper.buildFromSnapshot(
+                    SnapshotCapture.run(game, b, "faces", 1).objects.getValue(fid),
+                    iid,
+                    ZoneIds.BATTLEFIELD,
+                    1,
+                    b.cardProto,
+                )
+            val front = project()
+            front.currentTypeLine shouldBe card.type.toString()
+            card.setState(forge.card.CardStateName.Backside, false)
+            val back = project()
+            back.currentTypeLine shouldBe card.type.toString()
+            back.currentTypeLine shouldNotBe front.currentTypeLine
+            val snapshot = SnapshotCapture.run(game, b, "faces", 2).objects.getValue(fid)
+            ObjectMapper
+                .buildDisturbBackObject(
+                    snapshot,
+                    iid + 1,
+                    iid,
+                    ZoneIds.BATTLEFIELD,
+                    1,
+                    b.cardProto,
+                    Visibility.Public,
+                ).hasCurrentTypeLine() shouldBe false
+            card.setState(forge.card.CardStateName.Original, false)
+            project().currentTypeLine shouldBe front.currentTypeLine
+        }
+
         test("effective Flying filters after grants while retaining nonkeyword row IDs and parallel origins") {
             val (b, game, _) = startWithBoard { _, human, _ -> addCard("Grizzly Bears", human, ZoneType.Battlefield) }
             val card = game.humanPlayer.battlefield.card("Grizzly Bears")

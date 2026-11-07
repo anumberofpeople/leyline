@@ -112,6 +112,8 @@ data class CardSnapshot(
      * Stored as proto [CardType] ordinal integers for easy comparison.
      */
     val liveCardTypeNumbers: List<Int> = emptyList(),
+    /** Full effective Forge type text; null is unavailable, empty is authoritative typeless. */
+    val currentTypeLine: String? = null,
     /** True when the card is double-faced (has an Backside/Original alternate state). */
     val isDoubleFaced: Boolean = false,
     /**

@@ -29,6 +29,67 @@ class StateProjectionCompilerVisibilityTest :
     FunSpec({
         tags(UnitTag)
 
+        test("hand inspection revocation clears previously visible current type text in Diff") {
+            val cardId = ForgeCardId(10)
+            val visible =
+                CardSnapshot(
+                    cardId,
+                    "Private card",
+                    101,
+                    SeatId(1),
+                    SeatId(1),
+                    mayLookSeatIds = setOf(SeatId(2)),
+                    currentTypeLine = "Creature - Secret",
+                )
+
+            fun snapshot(
+                id: Int,
+                card: CardSnapshot,
+            ) = GsmSnapshot.forTest(
+                matchId = "type-visibility",
+                gameStateId = id,
+                seats = listOf(SeatSnapshot(SeatId(1), 20, 20, 7), SeatSnapshot(SeatId(2), 20, 20, 7)),
+                objects = mapOf(cardId to card),
+                zones =
+                    mapOf(
+                        ZoneIds.P1_HAND to
+                            ZoneSnapshot(
+                                ZoneIds.P1_HAND,
+                                ZoneType.Hand,
+                                SeatId(1),
+                                Visibility.Private,
+                                listOf(cardId),
+                            ),
+                    ),
+            )
+            val before = snapshot(1, visible)
+            val shown =
+                StateProjectionCompiler.compileOneViewer(
+                    compilerEnvironment(),
+                    compilerInput(before).copy(viewingSeatId = 2),
+                    ProjectionState.initial(),
+                )
+            val iid =
+                shown.transition.nextState.identities.forgeIdToInstanceId
+                    .getValue(cardId)
+                    .value
+            shown.gsm.gameObjectsList
+                .single { it.instanceId == iid }
+                .currentTypeLine shouldBe "Creature - Secret"
+            val after = snapshot(2, visible.copy(mayLookSeatIds = emptySet()))
+            val concealed =
+                StateProjectionCompiler.compileOneViewer(
+                    compilerEnvironment(),
+                    compilerInput(after, before).copy(viewingSeatId = 2),
+                    shown.transition.nextState,
+                )
+            val hidden = concealed.gsm.gameObjectsList.single { it.instanceId == iid }
+            concealed.gsm.type shouldBe GameStateType.Diff
+            hidden.visibility shouldBe Visibility.Hidden
+            hidden.grpId shouldBe 0
+            hidden.hasCurrentTypeLine() shouldBe false
+        }
+
         test("prompt source identity survives admission without a synthetic stack object") {
             val source = ForgeCardId(42)
             val beforeEntry = GsmSnapshot.forTest()
@@ -82,7 +143,16 @@ class StateProjectionCompilerVisibilityTest :
                     seats = listOf(SeatSnapshot(SeatId(1), 20, 20, 7), SeatSnapshot(SeatId(2), 20, 20, 7)),
                     objects =
                         mapOf(
-                            foretoldId to CardSnapshot(foretoldId, "Foretold card", 101, SeatId(1), SeatId(2), isForetold = true),
+                            foretoldId to
+                                CardSnapshot(
+                                    foretoldId,
+                                    "Foretold card",
+                                    101,
+                                    SeatId(1),
+                                    SeatId(2),
+                                    isForetold = true,
+                                    currentTypeLine = "Sorcery - Secret",
+                                ),
                             publicId to CardSnapshot(publicId, "Public exile card", 202, SeatId(2), SeatId(2)),
                             handId to CardSnapshot(handId, "Private hand card", 303, SeatId(1), SeatId(1)),
                         ),
@@ -116,6 +186,7 @@ class StateProjectionCompilerVisibilityTest :
             val opponent = projected.viewers[1].result.gsm
             val card = owner.gameObjectsList.single { it.instanceId == foretoldIid }
             assertSoftly {
+                card.currentTypeLine shouldBe "Sorcery - Secret"
                 card.grpId shouldBe 101
                 card.overlayGrpId shouldBe 3
                 card.isFacedown shouldBe true
@@ -124,6 +195,7 @@ class StateProjectionCompilerVisibilityTest :
                 card.ownerSeatId shouldBe 1
                 card.controllerSeatId shouldBe 2
                 val opponentCard = opponent.gameObjectsList.single { it.instanceId == foretoldIid }
+                opponentCard.hasCurrentTypeLine() shouldBe false
                 opponentCard.grpId shouldBe 3
                 opponentCard.overlayGrpId shouldBe 3
                 opponentCard.isFacedown shouldBe true
@@ -289,6 +361,7 @@ class StateProjectionCompilerVisibilityTest :
                             101,
                             SeatId(1),
                             SeatId(2),
+                            currentTypeLine = "Creature - Secret",
                             isOnBattlefield =
                                 zoneType == ZoneType.Battlefield,
                         )
@@ -341,6 +414,7 @@ class StateProjectionCompilerVisibilityTest :
                                 obj.isFacedown shouldBe true
                                 obj.power.value shouldBe 2
                                 obj.toughness.value shouldBe 2
+                                obj.hasCurrentTypeLine() shouldBe false
                                 obj.name shouldBe 0
                                 obj.subtypesList shouldBe emptyList()
                                 obj.colorList shouldBe emptyList()
@@ -363,6 +437,7 @@ class StateProjectionCompilerVisibilityTest :
                             viewer.result.gsm.type shouldBe GameStateType.Diff
                             obj.grpId shouldBe 101
                             obj.overlayGrpId shouldBe 101
+                            obj.currentTypeLine shouldBe "Creature - Secret"
                             obj.isFacedown shouldBe false
                             obj.visibility shouldBe Visibility.Public
                             obj.viewersList shouldBe emptyList()
