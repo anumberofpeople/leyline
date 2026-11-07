@@ -189,9 +189,14 @@ class Board(
          *
          * @param board lambda that receives (game, human, ai) to set up zones
          */
-        fun startWithBoard(board: (game: Game, human: Player, ai: Player) -> Unit): Board {
+        fun startWithBoard(board: (game: Game, human: Player, ai: Player) -> Unit): Board = startWithBoard(EngineSettings(), board)
+
+        fun startWithBoard(
+            settings: EngineSettings,
+            board: (game: Game, human: Player, ai: Player) -> Unit,
+        ): Board {
             val counter = LogicalSequencePlanner(initialGsId = 20, initialMsgId = 0)
-            val b = GameBridge(initialSequence = counter.snapshot(), cardRepository = TestCardRegistry.repo)
+            val b = GameBridge(initialSequence = counter.snapshot(), cardRepository = TestCardRegistry.repo, engineSettings = settings)
 
             val game = GameBootstrap.createGame()
             b.wrapGame(game)

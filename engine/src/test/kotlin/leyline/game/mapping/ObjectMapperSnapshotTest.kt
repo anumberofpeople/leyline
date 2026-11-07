@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import leyline.bridge.types.ForgeCardId
 import leyline.bridge.types.SeatId
+import leyline.config.EngineSettings
 import leyline.game.codes.KeywordGrpIds
 import leyline.game.seedDiffBaseline
 import leyline.game.snapshot.SnapshotCapture
@@ -26,8 +27,32 @@ import wotc.mtgo.gre.external.messaging.Messages.Visibility
 class ObjectMapperSnapshotTest :
     BoardTest({
 
-        test("effective type text preserves Borg and type removal without enum inference") {
+        test("native type text defaults remain absent and host opt-in is not serialized") {
             val (b, game, _) = startWithBoard { _, human, _ -> addCard("Grizzly Bears", human, ZoneType.Battlefield) }
+            val card = game.humanPlayer.battlefield.card("Grizzly Bears")
+            val fid = ForgeCardId(card.id)
+            val snapshot = SnapshotCapture.run(game, b, "native-types", 1).objects.getValue(fid)
+            EngineSettings().includeCurrentTypeLine shouldBe false
+            snapshot.currentTypeLine shouldBe null
+            ObjectMapper
+                .buildFromSnapshot(
+                    snapshot,
+                    b.getOrAllocInstanceId(fid).value,
+                    ZoneIds.BATTLEFIELD,
+                    1,
+                    b.cardProto,
+                ).hasCurrentTypeLine() shouldBe false
+            val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+            json
+                .encodeToString(EngineSettings.serializer(), EngineSettings(includeCurrentTypeLine = true))
+                .contains("includeCurrentTypeLine") shouldBe false
+        }
+
+        test("effective type text preserves Borg and type removal without enum inference") {
+            val (b, game, _) =
+                startWithBoard(
+                    EngineSettings(includeCurrentTypeLine = true),
+                ) { _, human, _ -> addCard("Grizzly Bears", human, ZoneType.Battlefield) }
             val card = game.humanPlayer.battlefield.card("Grizzly Bears")
             val fid = ForgeCardId(card.id)
             val iid = b.getOrAllocInstanceId(fid).value
@@ -61,7 +86,10 @@ class ObjectMapperSnapshotTest :
         }
 
         test("type text presence distinguishes typeless cards from unavailable snapshots") {
-            val (b, game, _) = startWithBoard { _, human, _ -> addCard("Grizzly Bears", human, ZoneType.Battlefield) }
+            val (b, game, _) =
+                startWithBoard(
+                    EngineSettings(includeCurrentTypeLine = true),
+                ) { _, human, _ -> addCard("Grizzly Bears", human, ZoneType.Battlefield) }
             val card = game.humanPlayer.battlefield.card("Grizzly Bears")
             val fid = ForgeCardId(card.id)
             val iid = b.getOrAllocInstanceId(fid).value
@@ -94,7 +122,10 @@ class ObjectMapperSnapshotTest :
 
         test("effective type text follows the active transforming face and returns to front") {
             TestCardRegistry.ensureCardRegistered("Revealing Eye")
-            val (b, game, _) = startWithBoard { _, human, _ -> addCard("Concealing Curtains", human, ZoneType.Battlefield) }
+            val (b, game, _) =
+                startWithBoard(
+                    EngineSettings(includeCurrentTypeLine = true),
+                ) { _, human, _ -> addCard("Concealing Curtains", human, ZoneType.Battlefield) }
             val card = game.humanPlayer.battlefield.card("Concealing Curtains")
             val fid = ForgeCardId(card.id)
             val iid = b.getOrAllocInstanceId(fid).value

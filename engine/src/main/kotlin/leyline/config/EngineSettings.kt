@@ -53,6 +53,9 @@ data class EngineSettings(
     /** Embedding-host opt-in; native configuration and wire defaults stay unchanged. */
     @Transient
     val keywordProjection: KeywordProjection = KeywordProjection.Native,
+    /** Embedding-host opt-in for the local live type-text extension; native bytes stay unchanged. */
+    @Transient
+    val includeCurrentTypeLine: Boolean = false,
 ) {
     /**
      * AI delay multiplier derived from [aiSpeed].

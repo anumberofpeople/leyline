@@ -658,7 +658,7 @@ object SnapshotCapture {
             attachedToInstanceId = attachedToInstanceId,
             preparedCopySourceInstanceId = preparedCopySourceInstanceId,
             liveCardTypeNumbers = liveTypeNumbers,
-            currentTypeLine = card.type.toString(),
+            currentTypeLine = if (bridge.engineSettings.includeCurrentTypeLine) card.type.toString() else null,
             isDoubleFaced = card.isDoubleFaced,
             othersideGrpId = othersideGrpId,
             currentStateNameIsBackside = currentStateNameIsBackside,

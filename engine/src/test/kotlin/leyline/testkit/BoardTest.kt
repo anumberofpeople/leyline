@@ -82,6 +82,11 @@ abstract class BoardTest(
      */
     fun startWithBoard(board: (game: Game, human: Player, ai: Player) -> Unit): Board = trackResult(Board.startWithBoard(board))
 
+    fun startWithBoard(
+        settings: EngineSettings,
+        board: (game: Game, human: Player, ai: Player) -> Unit,
+    ): Board = trackResult(Board.startWithBoard(settings, board))
+
     /**
      * Start a deterministic game, keep hand, advance to Main1.
      *

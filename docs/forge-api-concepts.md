@@ -340,7 +340,9 @@ while preserving its slot and retires inaccessible linked faces from Diff update
 their existing precedence.
 
 Live card type text is captured from Forge's effective `CardType.toString()`
-in `CardSnapshot.currentTypeLine`. Visible active card objects publish it as
+in `CardSnapshot.currentTypeLine` only when the embedding host opts in with
+`EngineSettings.includeCurrentTypeLine`. This transient setting defaults to
+false, preserving native protocol bytes. Visible active card objects publish it as
 the optional `GameObjectInfo.currentTypeLine` string (local extension tag 50001,
 outside upstream's low-tag field range). This preserves types absent from GRE
 enums without inventing enum values. Absent means unavailable/legacy; present
